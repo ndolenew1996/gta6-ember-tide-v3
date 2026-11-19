@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EMBER TIDE — Port Vela</title>
+<style>
+  html { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a0f2e; font-family: 'Segoe UI', Arial, sans-serif; }
+  button:focus-visible { outline: 3px solid #ffd23f; outline-offset: 2px; }
+  #game-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.85); }
+  .panel { background: rgba(10,8,24,.62); border: 1px solid rgba(255,255,255,.22); border-radius: 8px; padding: 6px 10px; }
+  .label { font-size: 10px; letter-spacing: 2px; color: #ffd9a0; font-weight: 700; }
+  #cash-box { position: absolute; top: 12px; left: 12px; font-size: 20px; font-weight: 800; }
+  #cash-box .sub { font-size: 11px; color: #cfe8ff; font-weight: 600; letter-spacing: 1px; }
+  .bar { height: 9px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.35); border-radius: 5px; overflow: hidden; margin-top: 3px; }
+  .bar > div { height: 100%; }
+  #health-fill { background: linear-gradient(90deg,#37d67a,#7cf2a8); width: 82%; }
+  #armour-fill { background: linear-gradient(90deg,#4aa8ff,#8fd0ff); width: 64%; }
+  #wanted { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); text-align: center; }
+  #stars { font-size: 26px; letter-spacing: 4px; color: #ffd23f; }
+  #stars .off { color: rgba(255,255,255,.28); }
+  #pursuit { font-size: 12px; font-weight: 800; letter-spacing: 2px; color: #ff5d5d; }
+  #clock-box { position: absolute; top: 12px; right: 12px; text-align: right; font-size: 13px; font-weight: 700; }
+  #clock { font-size: 22px; font-weight: 800; }
+  #radio { font-size: 12px; color: #ffb3d9; letter-spacing: 1px; }
+  #district { position: absolute; top: 86px; left: 50%; transform: translateX(-50%); text-align: center; }
+  #district-name { font-size: 26px; font-weight: 900; font-style: italic; letter-spacing: 3px; }
+  #district-sub { font-size: 12px; letter-spacing: 4px; color: #ffd9a0; }
+  #mission-box { position: absolute; top: 150px; left: 12px; font-size: 14px; line-height: 1.45; max-width: 340px; }
+  #mission-title { font-size: 15px; font-weight: 800; color: #ffe9a8; }
+  #mission-next { color: #9be7ff; font-weight: 700; }
+  #vpd { position: absolute; top: 150px; right: 12px; width: 248px; font-size: 13px; line-height: 1.5; }
+  #vpd h3 { margin: 0 0 4px; font-size: 12px; letter-spacing: 1px; color: #ff8a8a; }
+  #vpd .unit { display: flex; justify-content: space-between; }
+  #vpd .unit b { color: #ffe9a8; }
+  #trace-box { position: absolute; top: 330px; right: 12px; width: 248px; font-size: 13px; }
+  #trace-fill { background: linear-gradient(90deg,#ff5d5d,#ffb13f); width: 68%; }
+  #minimap-wrap { position: absolute; left: 12px; bottom: 12px; text-align: center; }
+  #minimap { border-radius: 50%; border: 3px solid rgba(255,255,255,.75); box-shadow: 0 0 0 3px rgba(0,0,0,.5); background: #0a1428; }
+  #rep-box { margin-top: 6px; font-size: 13px; font-weight: 800; }
+  #rep-fill { background: linear-gradient(90deg,#ff9a3d,#ffd23f); width: 62%; }
+  #speed-box { position: absolute; right: 12px; bottom: 12px; text-align: right; }
+  #gauge-wrap { position: relative; width: 120px; height: 120px; margin: 2px auto; }
+  #speed-gauge { display: block; }
+  #gauge-wrap #speed { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 26px; }
+  #car-name { font-size: 14px; font-weight: 800; color: #ffe9a8; }
+  #speed { font-size: 34px; font-weight: 900; line-height: 1; }
+  #speed small { font-size: 12px; color: #cfe8ff; }
+  #nitro-fill { background: linear-gradient(90deg,#ff5d8f,#ff9a3d); width: 71%; }
+  #stamina-fill { background: linear-gradient(90deg,#37d67a,#b8f26b); width: 88%; }
+  #weapons { position: absolute; right: 12px; bottom: 232px; display: flex; gap: 6px; }
+  .slot { width: 74px; text-align: center; font-size: 10px; padding: 5px 2px; border-radius: 7px; background: rgba(10,8,24,.62); border: 1px solid rgba(255,255,255,.25); }
+  .slot.active { border-color: #ffd23f; box-shadow: 0 0 0 2px rgba(255,210,63,.5); background: rgba(60,40,10,.8); }
+  .slot b { display: block; font-size: 12px; color: #ffe9a8; }
+  .slot .locked { color: #ff8a8a; }
+  #dialogue { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: 560px; display: flex; gap: 10px; align-items: center; }
+  #portrait { width: 56px; height: 56px; border-radius: 50%; flex: none; background: radial-gradient(circle at 35% 30%, #ffb37a, #b3562e 60%, #5e2410); border: 2px solid #ffd23f; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; color: #fff; }
+  #dialogue-text { font-size: 14px; line-height: 1.4; }
+  #dialogue-text b { color: #ffd23f; }
+  #score-line { position: absolute; left: 50%; bottom: 118px; transform: translateX(-50%); font-size: 14px; font-weight: 800; color: #ffe9a8; }
+  #crew { position: absolute; left: 12px; bottom: 238px; font-size: 13px; line-height: 1.6; }
+  #crew b { color: #9be7ff; }
+  #prompt { position: absolute; left: 50%; top: 46%; transform: translateX(-50%); font-size: 16px; font-weight: 800; background: rgba(10,8,24,.75); border: 1px solid #ffd23f; border-radius: 8px; padding: 8px 14px; display: none; }
+  #toast { position: absolute; left: 50%; top: 38%; transform: translateX(-50%); font-size: 26px; font-weight: 900; letter-spacing: 2px; color: #ffd23f; display: none; text-align: center; }
+  #flavour { position: absolute; left: 12px; top: 284px; font-size: 13px; font-style: italic; color: #e8d5ff; max-width: 300px; }
+  .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(8,4,20,.72); pointer-events: auto; z-index: 5; }
+  .screen.hidden, .hidden { display: none !important; }
+  #start-card { max-width: 640px; background: linear-gradient(160deg, rgba(40,10,60,.95), rgba(10,20,50,.95)); border: 1px solid #ff9a3d; border-radius: 14px; padding: 28px 34px; color: #fff; }
+  #start-card h1 { margin: 0; font-size: 52px; letter-spacing: 4px; font-style: italic; color: #ffd23f; }
+  #start-card h2 { margin: 2px 0 12px; font-size: 15px; letter-spacing: 5px; color: #ff9a3d; }
+  #start-card p { font-size: 14px; line-height: 1.55; }
+  #start-card .btn { display: inline-block; margin: 8px 8px 0 0; padding: 10px 22px; background: #ff9a3d; color: #1a0f2e; font-weight: 900; border-radius: 8px; cursor: pointer; border: none; font-size: 15px; }
+  #map-card { width: 1060px; max-width: 94vw; background: rgba(8,10,26,.96); border: 1px solid #4aa8ff; border-radius: 12px; padding: 16px 20px; color: #fff; }
+  #map-card h1 { margin: 0 0 8px; font-size: 22px; letter-spacing: 3px; color: #9be7ff; }
+  #map-flex { display: flex; gap: 18px; }
+  #bigmap { border: 2px solid rgba(255,255,255,.4); border-radius: 8px; background: #0a1428; }
+  #map-side { font-size: 14px; line-height: 1.65; flex: 1; }
+  #map-side h3 { margin: 6px 0 2px; color: #ffd23f; font-size: 13px; letter-spacing: 2px; }
+  #map-side .legend span { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  #garage-screen { justify-content: flex-start; align-items: flex-start; background: rgba(8,4,20,0.25); }
+  #garage-card { width: 620px; max-width: 94vw; background: rgba(8,10,26,.96); border: 1px solid #ff9a3d; border-radius: 12px; padding: 16px 20px; color: #fff; margin: 140px 0 0 12px; font-size: 13px; }
+  #garage-card h1 { margin: 0 0 8px; font-size: 22px; letter-spacing: 3px; color: #ffd23f; }
+  #garage-flex { display: flex; gap: 18px; }
+  #garage-rows { font-size: 14px; line-height: 1.65; flex: 1; }
+  #garage-rows .row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.14); padding: 4px 0; }
+  #garage-rows .row b { color: #ffe9a8; }
+  #garage-rows .row .locked { color: #ff8a8a; }
+  #garage-side { font-size: 14px; line-height: 1.65; flex: 1; }
+  #garage-side h3 { margin: 6px 0 2px; color: #ffd23f; font-size: 13px; letter-spacing: 2px; }
+  #garage-card .btn { display: inline-block; margin: 12px 8px 0 0; padding: 10px 22px; background: #ff9a3d; color: #1a0f2e; font-weight: 900; border-radius: 8px; cursor: pointer; border: none; font-size: 15px; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="game-canvas" aria-label="EMBER TIDE: open-world crime game in Port Vela"></canvas>
+<div id="hud">
+  <div id="cash-box" class="panel"><span id="cash">$4,820</span><div class="sub">CASH · TIDE FM 92.7</div>
+    <div class="label">HEALTH <span id="health-num">82</span></div><div class="bar"><div id="health-fill"></div></div>
+    <div class="label">ARMOUR <span id="armour-num">64</span></div><div class="bar"><div id="armour-fill"></div></div>
+  </div>
+  <div id="wanted"><div id="stars">★★★<span class="off">☆☆</span></div><div id="pursuit">PURSUIT ACTIVE · AIR UNIT</div></div>
+  <div id="clock-box" class="panel"><div id="clock">FRI 18:36</div><div id="radio">TIDE FM 92.7 · SUNSET SYNTH</div><div id="day-line">DAY 2 · 8 MISSIONS · PORT VELA</div></div>
+  <div id="district"><div id="district-name">CORAL ROW</div><div id="district-sub">BEACHFRONT</div></div>
+  <div id="mission-box" class="panel">
+    <div id="mission-title">MISSION 3/8 · TIDEGATE CHASE</div>
+    <div id="mission-obj">Lose the VPD · break line of sight</div>
+    <div id="mission-count">HEAT 3 STARS · HELICOPTER OVERHEAD</div>
+    <div id="mission-next">NEXT: Kessler's Ledger · 210 m</div>
+    <div id="mission-timer">TIMER 01:24 · CHECKPOINT —</div>
+  </div>
+  <div id="vpd" class="panel"><h3>VPD RESPONSE · PORT VELA PD</h3><div id="vpd-units"></div></div>
+  <div id="trace-box" class="panel"><div class="label">LINE OF SIGHT · <span id="sight-label">IN SIGHT</span></div><div class="bar"><div id="trace-fill"></div></div><div>TRACE <span id="trace-num">68</span>% · break line of sight</div></div>
+  <div id="flavour">The tide comes in at midnight — finish the job before the causeway floods.</div>
+  <div id="crew" class="panel"><b>[Z]</b> PILAR — HACK CAMERAS<br><b>[X]</b> BRAM — RAM BOOST<br><b>[V]</b> ODETTE — SPOT PATROLS</div>
+  <div id="score-line">+ $150 DRIFT x3 · NEAR MISS +$250</div>
+  <div id="minimap-wrap"><canvas id="minimap" width="168" height="168" role="img" aria-label="Minimap of Port Vela"></canvas><div id="rep-box" class="panel">REP 3 · WHEELMAN · 1240/2000<div class="bar"><div id="rep-fill"></div></div></div></div>
+  <div id="weapons">
+    <div class="slot active" id="slot-1"><b>1 FISTS</b>—</div>
+    <div class="slot" id="slot-2"><b>2 TIDE 9MM</b>12/60</div>
+    <div class="slot" id="slot-3"><b>3 SQUALL SMG</b>32/160</div>
+    <div class="slot" id="slot-4"><b>4 BREAKER 12</b><span class="locked">LOCKED REP 4</span></div>
+    <div class="slot" id="slot-5"><b>5 TIDE AR</b><span class="locked">LOCKED REP 5</span></div>
+  </div>
+  <div id="speed-box" class="panel"><div id="car-name">SOLSTICE GT</div><div id="gauge-wrap"><canvas id="speed-gauge" width="120" height="120" role="img" aria-label="Speedometer"></canvas><div id="speed">87 <small>KM/H</small></div></div><div class="label">NITRO</div><div class="bar"><div id="nitro-fill"></div></div><div class="label">STAMINA</div><div class="bar"><div id="stamina-fill"></div></div></div>
+  <div id="dialogue" class="panel"><div id="portrait">SD</div><div id="dialogue-text"><b>SELMA:</b> “Dante, the tide waits for no one. Lose them on Coral Row — then come home.”</div></div>
+  <div id="prompt">[E] ENTER SOLSTICE GT</div>
+  <div id="toast" aria-live="polite"></div>
+</div>
+<div id="start-screen" class="screen"><div id="start-card">
+  <h1>EMBER TIDE</h1><h2>PORT VELA · AN OPEN-WORLD CRIME STORY</h2>
+  <p><b>The tide comes in at midnight — finish the job before the causeway floods.</b></p>
+  <p>Dante Vane is back in Port Vela after five years away — a getaway driver with a debt to Selma Duarte, a crew that still answers his calls, and Anton Kessler owning every dock in the city. Drive, steal, fight and outrun the Vela PD across six districts, from Coral Row beachfront to the Old Foundry docks.</p>
+  <p><b>WASD</b> drive / walk · <b>SHIFT</b> nitro · <b>E</b> enter / steal car · <b>SPACE</b> handbrake · <b>MOUSE</b> aim · <b>CLICK</b> shoot · <b>1–5</b> weapons · <b>Z/X/V</b> crew abilities · <b>M</b> map · <b>P</b> pause · <b>R</b> radio · <b>F</b> garage / buy / fare</p>
+  <p id="save-line">NO SAVE YET — A NEW TIDE BEGINS</p>
+  <button class="btn" id="btn-new">NEW GAME</button><button class="btn" id="btn-continue">CONTINUE · 25% COMPLETE</button>
+</div></div>
+<div id="map-screen" class="screen hidden"><div id="map-card">
+  <h1>PORT VELA — PAUSED · MAP &amp; PROGRESS</h1>
+  <div id="map-flex">
+    <canvas id="bigmap" width="560" height="420"></canvas>
+    <div id="map-side">
+      <h3>LEGEND</h3><div class="legend">
+      <span style="background:#ffb37a"></span> Selma's Garage &nbsp; <span style="background:#ff5d5d"></span> Bayside Arms (gun shop)<br>
+      <span style="background:#4aa8ff"></span> Spray Palace (respray) &nbsp; <span style="background:#37d67a"></span> Hospital<br>
+      <span style="background:#ffd23f"></span> Races &nbsp; <span style="background:#b07cff"></span> Taxi fares &nbsp; <span style="background:#9be7ff"></span> Amber Shells 4/20</div>
+      <h3>STATS</h3><div id="stats-line">Missions done 2/8 · Garage 1/4 · Taxi fares 1 · Races 1 · Amber Shells 4/20 · <b>25% COMPLETE</b></div>
+      <h3>SKILLS</h3><div>Driving 3 · Aim 2 · Stamina 3 · Stealth 2 · Street Sense 4</div>
+      <h3>CREW</h3><div>PILAR · LV 3 · HACK CAMERAS · [Z]<br>BRAM · LV 2 · RAM BOOST · [X]<br>ODETTE · LV 2 · SPOT PATROLS · [V]</div>
+      <h3>REP-GATED UNLOCKS</h3><div>Next at 1,400: Night Causeway · Breaker 12 · Tide AR</div>
+      <h3>SAVE</h3><div>Slot 1 · 25% · FRI 18:36 · saved to this browser</div>
+      <p style="color:#9be7ff">Press M or P to resume. WASD to drive, E to steal a car, SHIFT for nitro.</p>
+    </div>
+  </div>
+</div></div>
+<p id="status" role="status" aria-live="polite"></p>
+<div id="garage-screen" class="screen hidden"><div id="garage-card">
+  <h1>SELMA'S GARAGE — WRENCH &amp; TUNING</h1>
+  <div id="garage-flex">
+    <div id="garage-rows">
+      <div class="row"><span><b>ENGINE</b> · TOP SPEED +18</span><span>$5,000</span></div>
+      <div class="row"><span><b>ARMOUR</b> · PLATING · RAM PROOF</span><span>$1,800</span></div>
+      <div class="row"><span><b>NITRO</b> · BOOST +45% · 2 TANKS</span><span>$3,000</span></div>
+      <div class="row"><span><b>REPAIR</b> · FULL RESTORE</span><span>$250</span></div>
+      <div class="row"><span><b>RESPRAY</b> · CLEAR WANTED</span><span>$250</span></div>
+      <div class="row"><span><b>BREAKER 12</b> · SHOTGUN</span><span class="locked">REP 5 · LOCKED</span></div>
+    </div>
+    <div id="garage-side">
+      <h3>MECHANIC</h3><div><b>SELMA:</b> “That Solstice needs a new heart before the causeway run. The tide comes in at midnight — don't leave her on the lift.”</div>
+      <h3>CREW ON CALL</h3><div>PILAR · BRAM · ODETTE — [Z] [X] [V]</div>
+      <h3>RADIO</h3><div>NOW PLAYING · TIDE FM 92.7 — SUNSET SYNTH<br>NEXT · CORAL FM 88.1 — PALM STATIC</div>
+      <h3>GARAGE</h3><div>SOLSTICE GT · 1/4 CARS · CASH <span id="garage-cash">$4,820</span></div>
+      <p style="color:#9be7ff">Press M or click Close to get back on the road.</p>
+    </div>
+  </div>
+  <button class="btn" id="btn-garage-close" aria-label="Close the garage and resume driving">CLOSE · BACK TO THE ROAD</button>
+</div></div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
